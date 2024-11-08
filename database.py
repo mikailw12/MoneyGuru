@@ -4,9 +4,9 @@ import arrow
 
 sqlite_database = 'sqlite:///database.db'
 
-engine = create_engine(sqlite_database, echo=True)
+engine = create_engine(sqlite_database)
 
-class  Base(DeclarativeBase):
+class Base(DeclarativeBase):
     pass
 
 Base.metadata.create_all(engine)
@@ -21,25 +21,25 @@ class User(Base):
 
 
 class Income(Base):
-    __tablename_ = 'incomes'
+    __tablename__ = 'incomes'
 
     id = Column(Integer, primary_key=True) 
     name = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
     created_at = Column(DateTime, default=arrow.now().datetime)
-    user_id = Column(Integer, ForeignKey=('users.tg_id'))
+    user_id = Column(Integer, ForeignKey('users.tg_id'))
 
     user = relationship('User', back_populates='incomes')
 
 class Expense(Base):
-    __tablename_ = 'expenses'
+    __tablename__ = 'expenses'
 
     id = Column(Integer, primary_key=True) 
     name = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
     category = Column(String, nullable=False)
     created_at = Column(DateTime, default=arrow.now().datetime)
-    user_id = Column(Integer, ForeignKey=('users.tg_id'))
+    user_id = Column(Integer, ForeignKey('users.tg_id'))
 
     user = relationship('User', back_populates='expenses')
 
@@ -57,12 +57,14 @@ async def add_user(tg_id):
 async def get_users():
     with Session(autoflush=False, bind=engine) as db: # get all users
         users = db.query(User).all()
-        return users.tg_id
-
+        users_id = []
+        for user in users:
+            users_id.append(user.tg_id)
+        return users_id
 async def add_ex(name, amount, category, tg_id):
     with Session(autoflush=False, bind=engine) as db:
-            new_income = Income(name=name, amount=amount, category=category, user_id=tg_id)
-            db.add(new_income)
+            new_expense = Expense(name=name, amount=amount, category=category, user_id=tg_id)
+            db.add(new_expense)
             db.commit()
 
 async def add_in(name, amount, tg_id):
@@ -70,36 +72,15 @@ async def add_in(name, amount, tg_id):
             new_income = Income(name=name, amount=amount, user_id=tg_id)
             db.add(new_income)
             db.commit()
-
-async def get_ex_or_in_for_mon(type, tg_id):
-    with Session(autoflush=False, bind=engine) as db: # get all expenses/incomes for month  
-        start_of_month = arrow.now().span("month")[0]
-        if type == 'ex':
-            exs = db.query(Expense).filter(Expense.user_id == tg_id, Expense.created_at >= start_of_month).all()
-            return exs
-        elif type == 'in':
-            ins = db.query(Income).filter(Income.user_id == tg_id, Income.created_at >= start_of_month).all()
-            return ins
-
-async def get_ex_or_in_for_week(type, tg_id):
-    with Session(autoflush=False, bind=engine) as db: # get all expenses/incomes for week
-        start_of_week = arrow.now().span("week")[0]
-        if type == 'ex':
-            exs = db.query(Expense).filter(Expense.user_id == tg_id, Expense.created_at >= start_of_week).all()
-            return exs
-        elif type == 'in':
-            ins = db.query(Income).filter(Income.user_id == tg_id, Income.created_at >= start_of_week).all()
-            return ins  
-        
-
-async def get_ex_or_in_for_year(type, tg_id):
-    with Session(autoflush=False, bind=engine) as db: # get all expenses/incomes for year
-        start_of_year = arrow.now().span("year")[0]
-        if type == 'ex':
-            exs = db.query(Expense).filter(Expense.user_id == tg_id, Expense.created_at >= start_of_year).all()
-            return exs
-        elif type == 'in':
-            ins = db.query(Income).filter(Income.user_id == tg_id, Income.created_at >= start_of_year).all()
-            return ins  
-
             
+async def get_incomes_by_term(type, tg_id):
+    with Session(autoflush=False, bind=engine) as db:
+        term = arrow.now().span(type)[0].datetime  # Convert arrow to datetime here
+        ins = db.query(Income).filter(Income.user_id == tg_id, Income.created_at >= term).all()
+        return ins
+
+async def get_expenses_by_term(type,tg_id):
+    with Session(autoflush=False, bind=engine) as db:
+        term = arrow.now().span(type)[0].datetime
+        exs = db.query(Expense).filter(Expense.user_id == tg_id, Expense.created_at >= term).all()
+        return exs
