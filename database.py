@@ -61,6 +61,7 @@ async def get_users():
         for user in users:
             users_id.append(user.tg_id)
         return users_id
+    
 async def add_ex(name, amount, category, tg_id):
     with Session(autoflush=False, bind=engine) as db:
             new_expense = Expense(name=name, amount=amount, category=category, user_id=tg_id)
