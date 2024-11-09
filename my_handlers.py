@@ -23,14 +23,6 @@ class Income(StatesGroup):
     name = State()
     amount = State()
 
-def refactor_term(term):
-    if term == "week":
-        return arrow.now().shift(weeks=-1).floor('day')
-    elif term == "month":
-        return arrow.now().shift(months=-1).floor('day')
-    elif term == "year":
-        return arrow.now().shift(years=-1).floor('day')
-
 @router.message(CommandStart())
 async def start(message:Message, state:FSMContext):
     await state.clear()
@@ -44,7 +36,6 @@ async def start(message:Message, state:FSMContext):
 @router.message(F.text=='Информация')
 async def information(message:Message):
     await message.answer('Данный бот был разработан @sunimassen для портфолио')
-
 
 
 #добавление
@@ -67,13 +58,16 @@ async def set_in_name(message:Message, state:FSMContext):
 
 @router.message(Income.amount)
 async def set_in_amount(message: Message, state: FSMContext):
-    data = await state.get_data()
-    name = data['name']
-    amount = float(message.text)  # Преобразуем сумму в число
-    await add_in(name, amount, message.from_user.id)
-    await state.clear()
-    await message.answer('Транзакция добавлена!\nГлавное меню - /start')
-
+    if message.text.isdigit():
+        data = await state.get_data()
+        name = data['name']
+        amount = float(message.text)  # Преобразуем сумму в число
+        await add_in(name, amount, message.from_user.id)
+        await state.clear()
+        await message.answer('Транзакция добавлена!\nГлавное меню - /start')
+    else:
+        await state.set_state(Income.amount)
+        await message.answer('Напишите сумму транзакции (только числа)')
 @router.callback_query(F.data=='new_expense')
 async def new_ex(callback:CallbackQuery, state:FSMContext):
     await callback.answer()
@@ -88,8 +82,12 @@ async def set_ex_name(message: Message, state: FSMContext):
 
 @router.message(Expense.amount)
 async def set_ex_amount(message: Message, state: FSMContext):
-    await state.update_data(amount=float(message.text))  # Преобразуем сумму в число
-    await message.answer('Выберите категорию транзакции', reply_markup=ex_categories_kb)
+    if message.text.isdigit():
+        await state.update_data(amount=float(message.text))  # Преобразуем сумму в число
+        await message.answer('Выберите категорию транзакции', reply_markup=ex_categories_kb)
+    else:
+        await state.set_state(Expense.amount)
+        await message.answer('Напишите сумму транзакции (только числа)')
 
 @router.callback_query(F.data.startswith('cat_'))
 async def set_category(callback: CallbackQuery, state: FSMContext):
@@ -136,7 +134,7 @@ async def get_incomes(callback: CallbackQuery):
             date = expense.created_at  # Use created_at, which should be datetime
             category = 'Транспорт' if expense.category == 'trans' else 'Еда' if expense.category == 'food' else 'Развлечения' if expense.category == 'enter' else 'Другое'
             await callback.message.answer(
-                f'Наименование дохода: {name}\nКатегория: {category}\nСумма: {amount}\nДата: {date.strftime("%d %B %Y, %H:%M:%S")}'
+                f'Наименование расхода: {name}\nКатегория: {category}\nСумма: {amount}\nДата: {date.strftime("%d %B %Y, %H:%M:%S")}'
             )
     else:
         await callback.message.answer('В данный момент у вас нет расходов')
