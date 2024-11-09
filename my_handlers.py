@@ -54,7 +54,7 @@ async def new_in(callback:CallbackQuery, state:FSMContext):
 async def set_in_name(message:Message, state:FSMContext):
     await state.update_data(name=message.text)
     await state.set_state(Income.amount)
-    await message.answer('Напишите сумму транзакции (только числа)')
+    await message.answer('Напишите сумму транзакции')
 
 @router.message(Income.amount)
 async def set_in_amount(message: Message, state: FSMContext):
@@ -78,7 +78,7 @@ async def new_ex(callback:CallbackQuery, state:FSMContext):
 async def set_ex_name(message: Message, state: FSMContext):
     await state.update_data(name=message.text)
     await state.set_state(Expense.amount)
-    await message.answer('Напишите сумму транзакции (только числа)')
+    await message.answer('Напишите сумму транзакции')
 
 @router.message(Expense.amount)
 async def set_ex_amount(message: Message, state: FSMContext):
